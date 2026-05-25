@@ -1,0 +1,14 @@
+name = "neuralgate"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "LOGS"
+id = "0df5abe0daab40f7b01ba889d5f5566f"
+preview_id = "d58b653ae1c4469d9ac47cf0937352f0"
+
+[vars]
+# Non-secret config vars can go here
+# Secrets are set via: wrangler secret put <NAME>
+# Required secrets: GEMINI_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, GATEWAY_API_KEY

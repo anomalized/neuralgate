@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NeuralGate — AI Gateway Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ── Reset & Variables ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #07080a;
+    --surface: #0e1014;
+    --surface2: #141820;
+    --border: #1e2530;
+    --border2: #252e3d;
+    --text: #e8edf5;
+    --muted: #5a6478;
+    --muted2: #7a8699;
+
+    --gemini: #3b82f6;
+    --gemini-dim: #1e3a5f;
+    --gemini-glow: rgba(59,130,246,0.25);
+
+    --groq: #f97316;
+    --groq-dim: #5c2a0a;
+    --groq-glow: rgba(249,115,22,0.25);
+
+    --mistral: #a855f7;
+    --mistral-dim: #3b1560;
+    --mistral-glow: rgba(168,85,247,0.25);
+
+    --success: #22d3a5;
+    --fail: #f43f5e;
+
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid Noise Background ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,8,10,0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+  }
+
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--gemini), var(--mistral));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 20px rgba(168,85,247,0.4);
+  }
+
+  .logo h1 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .logo span {
+    color: var(--mistral);
+  }
+
+  .header-right {
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .status-text {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted2);
+  }
+
+  #worker-url-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    width: 240px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #worker-url-input:focus { border-color: var(--gemini); }
+  #worker-url-input::placeholder { color: var(--muted); }
+
+  /* ── Layout ── */
+  main {
+    position: relative; z-index: 1;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px 40px 80px;
+  }
+
+  /* ── Hero Counter ── */
+  .hero {
+    text-align: center;
+    padding: 48px 0 56px;
+  }
+
+  .hero-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .total-count {
+    font-size: clamp(5rem, 12vw, 9rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #e8edf5 30%, var(--muted2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: all 0.5s ease;
+  }
+
+  .hero-sub {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+  }
+
+  .hero-sub span {
+    color: var(--success);
+  }
+
+  /* ── Section Labels ── */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Provider Cards ── */
+  .providers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .provider-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+
+  .provider-card:hover { transform: translateY(-2px); }
+
+  .provider-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .provider-card.gemini { border-color: var(--gemini-dim); }
+  .provider-card.gemini::before { background: var(--gemini); box-shadow: 0 0 12px var(--gemini); }
+  .provider-card.gemini:hover { border-color: var(--gemini); box-shadow: 0 0 30px var(--gemini-glow); }
+
+  .provider-card.groq { border-color: var(--groq-dim); }
+  .provider-card.groq::before { background: var(--groq); box-shadow: 0 0 12px var(--groq); }
+  .provider-card.groq:hover { border-color: var(--groq); box-shadow: 0 0 30px var(--groq-glow); }
+
+  .provider-card.mistral { border-color: var(--mistral-dim); }
+  .provider-card.mistral::before { background: var(--mistral); box-shadow: 0 0 12px var(--mistral); }
+  .provider-card.mistral:hover { border-color: var(--mistral); box-shadow: 0 0 30px var(--mistral-glow); }
+
+  .card-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .provider-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+  }
+
+  .gemini .provider-icon { background: var(--gemini-dim); color: var(--gemini); }
+  .groq .provider-icon   { background: var(--groq-dim);   color: var(--groq);   }
+  .mistral .provider-icon{ background: var(--mistral-dim); color: var(--mistral); }
+
+  .provider-name {
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .provider-model {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .card-count {
+    font-size: 2.8rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+    transition: all 0.4s;
+  }
+
+  .gemini .card-count { color: var(--gemini); }
+  .groq .card-count   { color: var(--groq); }
+  .mistral .card-count{ color: var(--mistral); }
+
+  .card-pct {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted2);
+    margin-bottom: 10px;
+  }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .gemini .progress-fill { background: var(--gemini); box-shadow: 0 0 8px var(--gemini); }
+  .groq .progress-fill   { background: var(--groq);   box-shadow: 0 0 8px var(--groq); }
+  .mistral .progress-fill{ background: var(--mistral); box-shadow: 0 0 8px var(--mistral); }
+
+  /* ── Request Feed ── */
+  .feed-section {
+    margin-bottom: 48px;
+  }
+
+  .feed-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .feed-table th {
+    text-align: left;
+    padding: 10px 16px;
+    color: var(--muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .feed-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  .feed-table tr:hover td {
+    background: var(--surface2);
+  }
+
+  .feed-table tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-gemini  { background: var(--gemini-dim);  color: var(--gemini);  border: 1px solid rgba(59,130,246,0.3); }
+  .badge-groq    { background: var(--groq-dim);    color: var(--groq);    border: 1px solid rgba(249,115,22,0.3); }
+  .badge-mistral { background: var(--mistral-dim); color: var(--mistral); border: 1px solid rgba(168,85,247,0.3); }
+  .badge-success { background: rgba(34,211,165,0.1); color: var(--success); border: 1px solid rgba(34,211,165,0.25); }
+  .badge-fail    { background: rgba(244,63,94,0.1);  color: var(--fail);    border: 1px solid rgba(244,63,94,0.25); }
+  .badge-task    { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border2); }
+
+  .latency-bar {
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .empty-feed {
+    text-align: center;
+    padding: 48px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+
+  /* ── Test Section ── */
+  .test-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .panel-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  textarea, select, input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    resize: vertical;
+  }
+
+  textarea:focus, select:focus, input:focus {
+    border-color: var(--gemini);
+    box-shadow: 0 0 0 3px var(--gemini-glow);
+  }
+
+  select option { background: var(--surface2); }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gemini), var(--mistral));
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(168,85,247,0.4);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ── Response Panel ── */
+  .response-meta {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .response-body {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--muted2);
+    min-height: 180px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-y: auto;
+    max-height: 400px;
+  }
+
+  .response-placeholder {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--gemini);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Footer ── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 24px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    header { padding: 16px 20px; }
+    .header-right { gap: 10px; }
+    #worker-url-input { width: 160px; }
+    main { padding: 24px 20px 60px; }
+    .providers-grid { grid-template-columns: 1fr; }
+    .test-section { grid-template-columns: 1fr; }
+  }
+
+  /* ── Flash animation for updates ── */
+  @keyframes flash {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+  }
+
+  .updating { animation: flash 0.6s ease; }
+
+  /* ── Failures chip ── */
+  .failures-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    background: rgba(244,63,94,0.08);
+    border: 1px solid rgba(244,63,94,0.2);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--fail);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">⚡</div>
+    <div>
+      <h1>Neural<span>Gate</span></h1>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="status-dot"></div>
+    <span class="status-text" id="status-text">connecting…</span>
+    <input
+      type="text"
+      id="worker-url-input"
+      placeholder="https://your-worker.workers.dev"
+      title="Your Cloudflare Worker URL"
+    />
+  </div>
+</header>
+
+<main>
+
+  <!-- Hero Counter -->
+  <section class="hero">
+    <div class="hero-label">total requests routed</div>
+    <div class="total-count" id="total-count">—</div>
+    <div class="hero-sub">
+      <span id="failures-inline">0</span> failures ·
+      refreshes every 30s
+      <span id="last-updated"></span>
+    </div>
+  </section>
+
+  <!-- Provider Cards -->
+  <div class="section-label">provider breakdown</div>
+  <div class="providers-grid">
+
+    <div class="provider-card gemini">
+      <div class="card-header">
+        <div class="provider-icon">G</div>
+        <div>
+          <div class="provider-name">Gemini</div>
+          <div class="provider-model">gemini-2.0-flash</div>
+        </div>
+      </div>
+      <div class="card-count" id="count-gemini">—</div>
+      <div class="card-pct" id="pct-gemini">—% of requests</div>
+      <div class="progress-bar"><div class="progress-fill" id="bar-gemini" style="width:0%"></div></div>
+    </div>
+
+    <div class="provider-card groq">
+      <div class="card-header">
+        <div class="provider-icon">Q</div>
+        <div>
+          <div class="provider-name">Groq</div>
+          <div class="provider-model">llama-3.3-70b-versatile</div>
+        </div>
+      </div>
+      <div class="card-count" id="count-groq">—</div>
+      <div class="card-pct" id="pct-groq">—% of requests</div>
+      <div class="progress-bar"><div class="progress-fill" id="bar-groq" style="width:0%"></div></div>
+    </div>
+
+    <div class="provider-card mistral">
+      <div class="card-header">
+        <div class="provider-icon">M</div>
+        <div>
+          <div class="provider-name">Mistral</div>
+          <div class="provider-model">mistral-small-latest</div>
+        </div>
+      </div>
+      <div class="card-count" id="count-mistral">—</div>
+      <div class="card-pct" id="pct-mistral">—% of requests</div>
+      <div class="progress-bar"><div class="progress-fill" id="bar-mistral" style="width:0%"></div></div>
+    </div>
+
+  </div>
+
+  <!-- Live Feed -->
+  <section class="feed-section">
+    <div class="section-label">live request feed</div>
+    <div id="feed-container">
+      <div class="empty-feed">No requests yet. Send one below ↓</div>
+    </div>
+  </section>
+
+  <!-- Test Gateway -->
+  <div class="section-label">test gateway</div>
+  <div class="test-section">
+
+    <div class="panel">
+      <div class="panel-title">Send a Request</div>
+
+      <div class="form-group">
+        <label class="form-label" for="api-key-input">Gateway API Key</label>
+        <input type="password" id="api-key-input" placeholder="your-gateway-key" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="message-input">Message</label>
+        <textarea id="message-input" rows="5" placeholder="Ask anything…"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="task-type-select">Task Type</label>
+        <select id="task-type-select">
+          <option value="auto">auto — let the gateway decide</option>
+          <option value="speed">speed — fastest response (Groq)</option>
+          <option value="quality">quality — best output (Gemini)</option>
+          <option value="long">long — long context (Gemini)</option>
+          <option value="code">code — programming tasks (Groq)</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" id="send-btn" onclick="sendTestRequest()">
+        Send Request
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Response</div>
+      <div class="response-meta" id="response-meta"></div>
+      <div class="response-body" id="response-body">
+        <span class="response-placeholder">Response will appear here…</span>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>
+  NeuralGate · Personal AI API Gateway · Powered by Cloudflare Workers
+</footer>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'neuralgate_worker_url';
+const STORAGE_APIKEY = 'neuralgate_api_key';
+
+let workerUrl = localStorage.getItem(STORAGE_KEY) || '';
+let refreshTimer = null;
+
+const urlInput = document.getElementById('worker-url-input');
+const apiKeyInput = document.getElementById('api-key-input');
+
+urlInput.value = workerUrl;
+apiKeyInput.value = localStorage.getItem(STORAGE_APIKEY) || '';
+
+urlInput.addEventListener('change', () => {
+  workerUrl = urlInput.value.trim().replace(/\/$/, '');
+  localStorage.setItem(STORAGE_KEY, workerUrl);
+  loadStats();
+});
+
+apiKeyInput.addEventListener('change', () => {
+  localStorage.setItem(STORAGE_APIKEY, apiKeyInput.value.trim());
+});
+
+// ── Stats Loading ─────────────────────────────────────────────────────────────
+async function loadStats() {
+  if (!workerUrl) {
+    setStatus(false, 'no worker url set');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${workerUrl}/stats`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderStats(data);
+    setStatus(true, 'live');
+  } catch (e) {
+    setStatus(false, 'unreachable');
+  }
+}
+
+function renderStats(data) {
+  const total = data.total_requests || 0;
+  const byP   = data.by_provider   || {};
+  const fails  = data.failures      || 0;
+  const logs   = data.last_10_requests || [];
+
+  // Hero
+  animateCount('total-count', total);
+  document.getElementById('failures-inline').textContent = fails;
+
+  const now = new Date();
+  document.getElementById('last-updated').textContent =
+    ` · updated ${now.toLocaleTimeString()}`;
+
+  // Cards
+  const providers = ['gemini', 'groq', 'mistral'];
+  providers.forEach(p => {
+    const count = byP[p] || 0;
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    document.getElementById(`count-${p}`).textContent = count;
+    document.getElementById(`pct-${p}`).textContent   = `${pct}% of requests`;
+    document.getElementById(`bar-${p}`).style.width   = `${pct}%`;
+  });
+
+  // Feed table
+  renderFeed(logs);
+}
+
+function animateCount(id, target) {
+  const el = document.getElementById(id);
+  const current = parseInt(el.textContent) || 0;
+  if (current === target) return;
+
+  const diff   = target - current;
+  const step   = Math.ceil(Math.abs(diff) / 20);
+  let val      = current;
+
+  const timer = setInterval(() => {
+    val += diff > 0 ? step : -step;
+    if ((diff > 0 && val >= target) || (diff < 0 && val <= target)) {
+      val = target;
+      clearInterval(timer);
+    }
+    el.textContent = val;
+  }, 25);
+}
+
+function renderFeed(logs) {
+  const container = document.getElementById('feed-container');
+  if (!logs || logs.length === 0) {
+    container.innerHTML = '<div class="empty-feed">No requests yet. Send one below ↓</div>';
+    return;
+  }
+
+  const rows = logs.map(entry => {
+    const time     = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '—';
+    const provider = entry.provider || '—';
+    const task     = entry.task_type || '—';
+    const latency  = entry.latency_ms != null ? `${entry.latency_ms}ms` : '—';
+    const success  = entry.success;
+
+    return `<tr>
+      <td>${time}</td>
+      <td><span class="badge badge-${provider}">${provider}</span></td>
+      <td><span class="badge badge-task">${task}</span></td>
+      <td>${latency}</td>
+      <td>
+        <span class="badge ${success ? 'badge-success' : 'badge-fail'}">
+          ${success ? 'ok' : 'fail'}
+        </span>
+        ${entry.fallback_used ? '<span class="badge badge-task" style="margin-left:4px">fallback</span>' : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="feed-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Provider</th>
+          <th>Task Type</th>
+          <th>Latency</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function setStatus(ok, msg) {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  dot.style.background   = ok ? 'var(--success)' : 'var(--fail)';
+  dot.style.boxShadow    = ok ? '0 0 8px var(--success)' : '0 0 8px var(--fail)';
+  text.textContent       = msg;
+}
+
+// ── Test Gateway ──────────────────────────────────────────────────────────────
+async function sendTestRequest() {
+  const btn     = document.getElementById('send-btn');
+  const msgEl   = document.getElementById('message-input');
+  const taskEl  = document.getElementById('task-type-select');
+  const keyEl   = document.getElementById('api-key-input');
+  const metaEl  = document.getElementById('response-meta');
+  const bodyEl  = document.getElementById('response-body');
+
+  const message   = msgEl.value.trim();
+  const task_type = taskEl.value;
+  const api_key   = keyEl.value.trim();
+
+  if (!workerUrl) {
+    bodyEl.innerHTML = '<span style="color:var(--fail)">⚠ Set your Worker URL in the top bar first.</span>';
+    return;
+  }
+
+  if (!message) {
+    bodyEl.innerHTML = '<span style="color:var(--fail)">⚠ Enter a message to send.</span>';
+    return;
+  }
+
+  if (!api_key) {
+    bodyEl.innerHTML = '<span style="color:var(--fail)">⚠ Enter your Gateway API key.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Routing…';
+  metaEl.innerHTML = '';
+  bodyEl.innerHTML = '<span class="response-placeholder">Waiting for response…</span>';
+
+  const start = Date.now();
+
+  try {
+    const res = await fetch(`${workerUrl}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, task_type, api_key }),
+    });
+
+    const data = await res.json();
+    const elapsed = Date.now() - start;
+
+    if (!res.ok) {
+      bodyEl.innerHTML = `<span style="color:var(--fail)">Error ${res.status}: ${data.error || 'Unknown error'}</span>`;
+      btn.disabled = false;
+      btn.textContent = 'Send Request';
+      return;
+    }
+
+    // Meta badges
+    const provider = data.provider_used || '?';
+    const fallback = data.fallback_used ? '<span class="badge badge-task">fallback used</span>' : '';
+    metaEl.innerHTML = `
+      <span class="badge badge-${provider}">${provider}</span>
+      <span class="badge badge-task">${data.task_type_detected || task_type}</span>
+      <span class="badge badge-success">${data.latency_ms ?? elapsed}ms</span>
+      <span class="badge badge-task">${data.tokens_used ?? '?'} tokens</span>
+      ${fallback}
+    `;
+
+    bodyEl.textContent = data.response || '(empty response)';
+
+    // Reload stats after a short delay
+    setTimeout(loadStats, 800);
+
+  } catch (e) {
+    bodyEl.innerHTML = `<span style="color:var(--fail)">Network error: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Request';
+  }
+}
+
+// Allow Ctrl+Enter to submit
+document.getElementById('message-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendTestRequest();
+});
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function startRefresh() {
+  loadStats();
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadStats, 30000);
+}
+
+startRefresh();
+</script>
+</body>
+</html>
